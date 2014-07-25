@@ -1342,3 +1342,4 @@ goog.addDependency('vec/vec4f.js', ['goog.vec.vec4f', 'goog.vec.vec4f.Type'], ['
 goog.addDependency('webgl/webgl.js', ['goog.webgl'], []);
 goog.addDependency('window/window.js', ['goog.window'], ['goog.string', 'goog.userAgent']);
 goog.addDependency('window/window_test.js', ['goog.windowTest'], ['goog.dom', 'goog.events', 'goog.string', 'goog.testing.AsyncTestCase', 'goog.testing.jsunit', 'goog.window']);
+goog.addDependency('crypt/shakats_test.js', ['goog.crypt.ShaKatsTest'], ['goog.array', 'goog.crypt', 'goog.crypt.Sha1', 'goog.crypt.Sha2', 'goog.crypt.Sha224', 'goog.crypt.Sha256', 'goog.crypt.Sha384', 'goog.crypt.Sha512', 'goog.testing.jsunit']);
