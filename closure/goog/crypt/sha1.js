@@ -51,32 +51,36 @@ goog.crypt.Sha1 = function() {
   /**
    * Holds the previous values of accumulated variables a-e in the compress_
    * function.
-   * @type {Array.<number>}
+   * @type {!Array.<number>|Int32Array}
    * @private
    */
-  this.chain_ = [];
+  this.chain_ = goog.global['Int32Array'] ? new Int32Array(5) : new Array(5);
 
   /**
    * A buffer holding the partially computed hash result.
    * @type {Array.<number>}
    * @private
    */
-  this.buf_ = [];
+  this.buf_ = goog.global['Uint8Array'] ?
+      new Uint8Array(this.blockSize) : new Array(this.blockSize);
 
   /**
-   * An array of 80 bytes, each a part of the message to be hashed.  Referred to
-   * as the message schedule in the docs.
-   * @type {Array.<number>}
+   * Temporary array used in chunk computation.  Allocate here as a
+   * member rather than as a local within computeChunk_() as a
+   * performance optimization to reduce the number of allocations and
+   * reduce garbage collection.
+   * @type {!Int32Array|!Array.<number>}
    * @private
    */
-  this.W_ = [];
-
+  this.W_ = goog.global['Int32Array'] ? new Int32Array(16) : new Array(16); 
+  
   /**
    * Contains data needed to pad messages less than 64 bytes.
-   * @type {Array.<number>}
+   * @type {!Array.<number>|Uint8Array}
    * @private
    */
-  this.pad_ = [];
+  this.pad_ = goog.global['Uint8Array'] ?
+      new Uint8Array(this.blockSize) : new Array(this.blockSize);
 
   this.pad_[0] = 128;
   for (var i = 1; i < this.blockSize; ++i) {
@@ -84,12 +88,17 @@ goog.crypt.Sha1 = function() {
   }
 
   /**
-   * @private {number}
+   * The length of the input waiting to be hashed in self.buf_
+   *
+   * @type {number}
+   * @private
    */
   this.inbuf_ = 0;
 
   /**
-   * @private {number}
+   * The total number of bytes hashed.
+   * @type {number}
+   * @private
    */
   this.total_ = 0;
 
@@ -129,12 +138,12 @@ goog.crypt.Sha1.prototype.compress_ = function(buf, opt_offset) {
     for (var i = 0; i < 16; i++) {
       // TODO(user): [bug 8140122] Recent versions of Safari for Mac OS and iOS
       // have a bug that turns the post-increment ++ operator into pre-increment
-      // during JIT compilation.  We have code that depends heavily on SHA-1 for
-      // correctness and which is affected by this bug, so I've removed all uses
-      // of post-increment ++ in which the result value is used.  We can revert
-      // this change once the Safari bug
-      // (https://bugs.webkit.org/show_bug.cgi?id=109036) has been fixed and
-      // most clients have been updated.
+      // during JIT compilation.
+      // TODO(someone): Bug resolved 2013-02-27 at:
+      //   https://bugs.webkit.org/show_bug.cgi?id=109036,
+      //   https://bugs.webkit.org/show_bug.cgi?id=110991
+      // (Is this still needed? If there's no significant performance advantage,
+      // current code is clearer.)
       W[i] = ((buf.charCodeAt(opt_offset) << 24) |
               (buf.charCodeAt(opt_offset + 1) << 16) |
               (buf.charCodeAt(opt_offset + 2) << 8) |
@@ -271,7 +280,7 @@ goog.crypt.Sha1.prototype.update = function(bytes, opt_length) {
 
 /** @override */
 goog.crypt.Sha1.prototype.digest = function() {
-  var digest = [];
+  var digest = goog.global['Uint8Array'] ? new Uint8Array(20) : new Array(20);
   var totalBits = this.total_ * 8;
 
   // Add pad 0x80 0x00*.

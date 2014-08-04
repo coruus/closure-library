@@ -71,7 +71,7 @@ goog.crypt.Sha2 = function(numHashBlocks, initHashBlocks) {
    * function.
    * @private {!Array.<number>|Int32Array}
    */
-  this.hash_ = [];
+  this.hash_ = goog.global['Int32Array'] ? new Int32Array(8) : new Array(8);
 
   /**
    * The number of output hash blocks (each block is 4 bytes long).
@@ -91,7 +91,7 @@ goog.crypt.Sha2 = function(numHashBlocks, initHashBlocks) {
    * reduce garbage collection.
    * @private {!Int32Array|!Array.<number>}
    */
-  this.w_ = goog.global['Int32Array'] ? new Int32Array(64) : new Array(64);
+  this.w_ = goog.global['Int32Array'] ? new Int32Array(16) : new Array(16);
 
   if (!goog.isDef(goog.crypt.Sha2.Kx_)) {
     // This is the first time this constructor has been called.
@@ -135,8 +135,6 @@ goog.crypt.Sha2.prototype.reset = function() {
 
 
 /** Helper function to precompute a message schedule.
- *
- * TODO(dlg): This is essentially static...
  *
  * @param {Array|Uint8Array|string} buf Data used for the update.
  * @param {number} opt_offset Optional offset into the data.
@@ -328,8 +326,11 @@ goog.crypt.Sha2.prototype.computeChunk_ = function(buf, opt_offset) {
     a = (t1 + t2) | 0;
   }
 
-  // Do steps 16-64.
+  // Steps 16-64. W is formally described as an 80-word array, and usually
+  // computed that way. However, only 16 elements are needed for any iteration
+  // so we compute W on the fly and keep only the last 16 values.
   for (var i = 16; i < 64; i++) {
+    // Update the message schedule.
     var w_15 = w[(i - 15)&15] | 0;
     var s0 = ((w_15 >>> 7) | (w_15 << 25)) ^
              ((w_15 >>> 18) | (w_15 << 14)) ^
@@ -343,6 +344,7 @@ goog.crypt.Sha2.prototype.computeChunk_ = function(buf, opt_offset) {
     var partialSum2 = ((w[(i - 7)&15] | 0) + s1) | 0;
     w[i&15] = (partialSum1 + partialSum2) | 0;
 
+    // Perform the update step.
     var S0 = ((a >>> 2) | (a << 30)) ^
              ((a >>> 13) | (a << 19)) ^
              ((a >>> 22) | (a << 10));
@@ -400,7 +402,7 @@ goog.crypt.Sha2.prototype.update = function(bytes, opt_length) {
     // input buffer (assuming it contains sufficient data). This gives ~25%
     // speedup on Chrome 23 and ~15% speedup on Firefox 16, but requires that
     // the data is provided in large chunks (or in multiples of 64 bytes).
-    if (inbuf == 0) {
+    if (inbuf === 0) {
       while (n <= lengthMinusBlock) {
         this.computeChunk_(bytes, n);
         n += this.blockSize;
@@ -444,7 +446,9 @@ goog.crypt.Sha2.prototype.update = function(bytes, opt_length) {
 
 /** @override */
 goog.crypt.Sha2.prototype.digest = function() {
-  var digest = [];
+  var digest_length = this.numHashBlocks_ / 4;
+  var digest = goog.global['Uint8Array'] ?
+      new Uint8Array(digest_length) : new Array(digest_length);
   var totalBits = this.total_ * 8;
 
   // Append pad 0x80 0x00*.
